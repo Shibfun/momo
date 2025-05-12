@@ -64,8 +64,11 @@
             margin-bottom: 5px;
             color: #333333;
         }
-        select {
+        .custom-select {
+            position: relative;
             width: 100%;
+        }
+        .select-selected {
             padding: 10px;
             background: #ffffff;
             border: 1px solid #cccccc;
@@ -73,17 +76,41 @@
             color: #333333;
             font-size: 1em;
             cursor: pointer;
-        }
-        .token-option {
             display: flex;
             align-items: center;
-            padding: 5px;
         }
-        .token-logo {
+        .select-selected img {
             width: 20px;
             height: 20px;
             margin-right: 8px;
-            vertical-align: middle;
+        }
+        .select-items {
+            position: absolute;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 99;
+            display: none;
+        }
+        .select-items div {
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .select-items div img {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+        .select-items div:hover {
+            background: #f0f0f0;
+        }
+        .select-items.show {
+            display: block;
         }
         .action-button {
             padding: 12px;
@@ -136,39 +163,44 @@
         </div>
         <div class="input-box">
             <label>Select Whitelisted Token</label>
-            <select id="tokenSelect">
-                <option value="">Select a token</option>
-                <option value="0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" data-logo="https://woofswap.finance/image/tokens/WOOF.png">
-                    <img src="https://woofswap.finance/image/tokens/WOOF.png" class="token-logo"> WOOF
-                </option>
-                <option value="0xeCe898EdCc0AF91430603175F945D8de75291c70" data-logo="https://woofswap.finance/image/tokens/DAMN.png">
-                    <img src="https://woofswap.finance/image/tokens/DAMN.png" class="token-logo"> DAMN
-                </option>
-                <option value="0x0b4FD6288b6d32171CC515bfFC9340026F56A358" data-logo="https://woofswap.finance/image/tokens/PIKA.png">
-                    <img src="https://woofswap.finance/image/tokens/PIKA.png" class="token-logo"> PIKA
-                </option>
-                <option value="0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0" data-logo="https://woofswap.finance/image/tokens/feed.png">
-                    <img src="https://woofswap.finance/image/tokens/feed.png" class="token-logo"> FEED
-                </option>
-                <option value="0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7" data-logo="https://woofswap.finance/image/tokens/wow.png">
-                    <img src="https://woofswap.finance/image/tokens/wow.png" class="token-logo"> WOW
-                </option>
-                <option value="0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad" data-logo="https://woofswap.finance/image/tokens/shipa.png">
-                    <img src="https://woofswap.finance/image/tokens/shipa.png" class="token-logo"> SHIPA
-                </option>
-                <option value="0x0cCD687CC6F8461170336D8e8cf46A39313DEab9" data-logo="https://www.woofswap.finance/image/tokens/luisa.png">
-                    <img src="https://www.woofswap.finance/image/tokens/luisa.png" class="token-logo"> LUISA
-                </option>
-                <option value="0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839" data-logo="https://woofswap.finance/image/tokens/ChikaLogo.png">
-                    <img src="https://woofswap.finance/image/tokens/ChikaLogo.png" class="token-logo"> CHIKA
-                </option>
-                <option value="0x64E19b6a167878d2483d166212A3c2c68b1eB842" data-logo="https://woofswap.finance/image/tokens/none.png">
-                    <img src="https://woofswap.finance/image/tokens/none.png" class="token-logo"> NONE
-                </option>
-                <option value="0x63A67329f761517570345eE86f791F74f9DC5461" data-logo="https://woofswap.finance/image/tokens/neko.png">
-                    <img src="https://woofswap.finance/image/tokens/neko.png" class="token-logo"> NEKO
-                </option>
-            </select>
+            <div class="custom-select">
+                <div class="select-selected">
+                    <img src="" alt="" style="display: none;">
+                    Select a token
+                </div>
+                <div class="select-items">
+                    <div data-value="0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" data-logo="https://woofswap.finance/image/tokens/WOOF.png">
+                        <img src="https://woofswap.finance/image/tokens/WOOF.png" alt="WOOF"> WOOF
+                    </div>
+                    <div data-value="0xeCe898EdCc0AF91430603175F945D8de75291c70" data-logo="https://woofswap.finance/image/tokens/DAMN.png">
+                        <img src="https://woofswap.finance/image/tokens/DAMN.png" alt="DAMN"> DAMN
+                    </div>
+                    <div data-value="0x0b4FD6288b6d32171CC515bfFC9340026F56A358" data-logo="https://woofswap.finance/image/tokens/PIKA.png">
+                        <img src="https://woofswap.finance/image/tokens/PIKA.png" alt="PIKA"> PIKA
+                    </div>
+                    <div data-value="0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0" data-logo="https://woofswap.finance/image/tokens/feed.png">
+                        <img src="https://woofswap.finance/image/tokens/feed.png" alt="FEED"> FEED
+                    </div>
+                    <div data-value="0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7" data-logo="https://woofswap.finance/image/tokens/wow.png">
+                        <img src="https://woofswap.finance/image/tokens/wow.png" alt="WOW"> WOW
+                    </div>
+                    <div data-value="0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad" data-logo="https://woofswap.finance/image/tokens/shipa.png">
+                        <img src="https://woofswap.finance/image/tokens/shipa.png" alt="SHIPA"> SHIPA
+                    </div>
+                    <div data-value="0x0cCD687CC6F8461170336D8e8cf46A39313DEab9" data-logo="https://www.woofswap.finance/image/tokens/luisa.png">
+                        <img src="https://www.woofswap.finance/image/tokens/luisa.png" alt="LUISA"> LUISA
+                    </div>
+                    <div data-value="0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839" data-logo="https://woofswap.finance/image/tokens/ChikaLogo.png">
+                        <img src="https://woofswap.finance/image/tokens/ChikaLogo.png" alt="CHIKA"> CHIKA
+                    </div>
+                    <div data-value="0x64E19b6a167878d2483d166212A3c2c68b1eB842" data-logo="https://woofswap.finance/image/tokens/none.png">
+                        <img src="https://woofswap.finance/image/tokens/none.png" alt="NONE"> NONE
+                    </div>
+                    <div data-value="0x63A67329f761517570345eE86f791F74f9DC5461" data-logo="https://woofswap.finance/image/tokens/neko.png">
+                        <img src="https://woofswap.finance/image/tokens/neko.png" alt="NEKO"> NEKO
+                    </div>
+                </div>
+            </div>
         </div>
         <button class="action-button" id="mintButton" disabled>Mint MOMO</button>
     </div>
@@ -214,11 +246,37 @@
         };
 
         let web3, account, momongaContract;
+        let selectedToken = '';
+
+        function initializeCustomSelect() {
+            const select = document.querySelector('.custom-select');
+            const selected = select.querySelector('.select-selected');
+            const items = select.querySelector('.select-items');
+            const options = items.querySelectorAll('div');
+
+            selected.addEventListener('click', () => {
+                items.classList.toggle('show');
+            });
+
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    selected.innerHTML = option.innerHTML;
+                    selectedToken = option.getAttribute('data-value');
+                    items.classList.remove('show');
+                    updateMintButton();
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!select.contains(e.target)) {
+                    items.classList.remove('show');
+                }
+            });
+        }
 
         function updateMintButton() {
-            const select = document.getElementById('tokenSelect');
             const mintButton = document.getElementById('mintButton');
-            mintButton.disabled = !select.value || !account;
+            mintButton.disabled = !selectedToken || !account;
         }
 
         async function initializeWeb3() {
@@ -288,7 +346,7 @@
         async function mintMomo() {
             const status = document.getElementById('networkStatus');
             const mintButton = document.getElementById('mintButton');
-            const tokenAddress = document.getElementById('tokenSelect').value;
+            const tokenAddress = selectedToken;
 
             if (!web3 || !account) {
                 status.innerText = "Please connect wallet first.";
@@ -327,7 +385,7 @@
 
         document.getElementById('connectWalletButton').addEventListener('click', initializeWeb3);
         document.getElementById('mintButton').addEventListener('click', mintMomo);
-        document.getElementById('tokenSelect').addEventListener('change', updateMintButton);
+        initializeCustomSelect();
     </script>
 </body>
 </html>
