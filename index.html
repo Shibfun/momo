@@ -54,6 +54,7 @@
             color: #555555;
             text-align: center;
             margin-bottom: 15px;
+            word-break: break-all;
         }
         .input-box {
             margin-bottom: 15px;
@@ -361,21 +362,29 @@
             try {
                 mintButton.disabled = true;
                 mintButton.innerHTML = 'Minting... <span class="spinner"></span>';
-                status.innerText = "Minting MOMO with token: " + tokenAddress;
+                status.innerText = `Minting MOMO with token: ${tokenAddress}`;
 
+                const currentGasPrice = await web3.eth.getGasPrice();
+                const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(15)).div(web3.utils.toBN(10));
                 const tx = await momongaContract.methods.mint(tokenAddress).send({
                     from: account,
                     gas: web3.utils.toHex(10000000),
-                    gasPrice: await web3.eth.getGasPrice()
+                    gasPrice: web3.utils.toHex(adjustedGasPrice)
                 });
+
+                status.innerText = `Transaction submitted. Hash: ${tx.transactionHash}`;
                 await waitForTransaction(tx.transactionHash);
 
                 status.innerText = "MOMO minted successfully!";
             } catch (error) {
+                let errorMessage = error.message || 'Unknown error';
+                if (error.message.includes('revert')) {
+                    errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
+                }
                 if (error.code === 4001) {
                     status.innerText = "Transaction canceled by user.";
                 } else {
-                    status.innerText = "Mint failed: " + (error.message || 'Unknown error');
+                    status.innerText = `Mint failed: ${errorMessage}`;
                     console.error(error);
                 }
             } finally {
