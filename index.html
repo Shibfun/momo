@@ -74,11 +74,16 @@
             font-size: 1em;
             cursor: pointer;
         }
+        .token-option {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
         .token-logo {
-            display: block;
-            margin: 10px auto;
-            width: 50px;
-            height: 50px;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            vertical-align: middle;
         }
         .action-button {
             padding: 12px;
@@ -131,20 +136,39 @@
         </div>
         <div class="input-box">
             <label>Select Whitelisted Token</label>
-            <select id="tokenSelect" onchange="updateTokenLogo()">
+            <select id="tokenSelect">
                 <option value="">Select a token</option>
-                <option value="0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" data-logo="https://woofswap.finance/image/tokens/WOOF.png">WOOF</option>
-                <option value="0xeCe898EdCc0AF91430603175F945D8de75291c70" data-logo="https://woofswap.finance/image/tokens/DAMN.png">DAMN</option>
-                <option value="0x0b4FD6288b6d32171CC515bfFC9340026F56A358" data-logo="https://woofswap.finance/image/tokens/PIKA.png">PIKA</option>
-                <option value="0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0" data-logo="https://woofswap.finance/image/tokens/feed.png">FEED</option>
-                <option value="0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7" data-logo="https://woofswap.finance/image/tokens/wow.png">WOW</option>
-                <option value="0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad" data-logo="https://woofswap.finance/image/tokens/shipa.png">SHIPA</option>
-                <option value="0x0cCD687CC6F8461170336D8e8cf46A39313DEab9" data-logo="https://www.woofswap.finance/image/tokens/luisa.png">LUISA</option>
-                <option value="0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839" data-logo="https://woofswap.finance/image/tokens/ChikaLogo.png">CHIKA</option>
-                <option value="0x64E19b6a167878d2483d166212A3c2c68b1eB842" data-logo="https://woofswap.finance/image/tokens/none.png">NONE</option>
-                <option value="0x63A67329f761517570345eE86f791F74f9DC5461" data-logo="https://woofswap.finance/image/tokens/neko.png">NEKO</option>
+                <option value="0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" data-logo="https://woofswap.finance/image/tokens/WOOF.png">
+                    <img src="https://woofswap.finance/image/tokens/WOOF.png" class="token-logo"> WOOF
+                </option>
+                <option value="0xeCe898EdCc0AF91430603175F945D8de75291c70" data-logo="https://woofswap.finance/image/tokens/DAMN.png">
+                    <img src="https://woofswap.finance/image/tokens/DAMN.png" class="token-logo"> DAMN
+                </option>
+                <option value="0x0b4FD6288b6d32171CC515bfFC9340026F56A358" data-logo="https://woofswap.finance/image/tokens/PIKA.png">
+                    <img src="https://woofswap.finance/image/tokens/PIKA.png" class="token-logo"> PIKA
+                </option>
+                <option value="0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0" data-logo="https://woofswap.finance/image/tokens/feed.png">
+                    <img src="https://woofswap.finance/image/tokens/feed.png" class="token-logo"> FEED
+                </option>
+                <option value="0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7" data-logo="https://woofswap.finance/image/tokens/wow.png">
+                    <img src="https://woofswap.finance/image/tokens/wow.png" class="token-logo"> WOW
+                </option>
+                <option value="0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad" data-logo="https://woofswap.finance/image/tokens/shipa.png">
+                    <img src="https://woofswap.finance/image/tokens/shipa.png" class="token-logo"> SHIPA
+                </option>
+                <option value="0x0cCD687CC6F8461170336D8e8cf46A39313DEab9" data-logo="https://www.woofswap.finance/image/tokens/luisa.png">
+                    <img src="https://www.woofswap.finance/image/tokens/luisa.png" class="token-logo"> LUISA
+                </option>
+                <option value="0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839" data-logo="https://woofswap.finance/image/tokens/ChikaLogo.png">
+                    <img src="https://woofswap.finance/image/tokens/ChikaLogo.png" class="token-logo"> CHIKA
+                </option>
+                <option value="0x64E19b6a167878d2483d166212A3c2c68b1eB842" data-logo="https://woofswap.finance/image/tokens/none.png">
+                    <img src="https://woofswap.finance/image/tokens/none.png" class="token-logo"> NONE
+                </option>
+                <option value="0x63A67329f761517570345eE86f791F74f9DC5461" data-logo="https://woofswap.finance/image/tokens/neko.png">
+                    <img src="https://woofswap.finance/image/tokens/neko.png" class="token-logo"> NEKO
+                </option>
             </select>
-            <img id="tokenLogo" class="token-logo" src="" alt="Token Logo" style="display: none;">
         </div>
         <button class="action-button" id="mintButton" disabled>Mint MOMO</button>
     </div>
@@ -179,22 +203,6 @@
                 "type": "event"
             }
         ];
-        const erc20Abi = [
-            {
-                "constant": true,
-                "inputs": [{"name": "_owner", "type": "address"}],
-                "name": "balanceOf",
-                "outputs": [{"name": "balance", "type": "uint256"}],
-                "type": "function"
-            },
-            {
-                "constant": false,
-                "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}],
-                "name": "approve",
-                "outputs": [{"name": "success", "type": "bool"}],
-                "type": "function"
-            }
-        ];
 
         const chains = {
             Shibarium: {
@@ -206,23 +214,11 @@
         };
 
         let web3, account, momongaContract;
-        let hasApprovedToken = {};
 
-        function updateTokenLogo() {
+        function updateMintButton() {
             const select = document.getElementById('tokenSelect');
-            const logoImg = document.getElementById('tokenLogo');
             const mintButton = document.getElementById('mintButton');
-            const selectedOption = select.options[select.selectedIndex];
-
-            if (selectedOption.value) {
-                logoImg.src = selectedOption.getAttribute('data-logo');
-                logoImg.style.display = 'block';
-                mintButton.disabled = false;
-            } else {
-                logoImg.src = '';
-                logoImg.style.display = 'none';
-                mintButton.disabled = true;
-            }
+            mintButton.disabled = !select.value || !account;
         }
 
         async function initializeWeb3() {
@@ -235,6 +231,7 @@
                     await switchNetwork('Shibarium');
                     await initializeContracts();
                     document.getElementById('networkStatus').innerText = `Connected to Shibarium`;
+                    updateMintButton();
                 } catch (error) {
                     document.getElementById('networkStatus').innerText = 'Failed to connect wallet';
                 }
@@ -308,18 +305,6 @@
                 mintButton.innerHTML = 'Minting... <span class="spinner"></span>';
                 status.innerText = "Minting MOMO...";
 
-                const tokenContract = new web3.eth.Contract(erc20Abi, tokenAddress);
-                if (!hasApprovedToken[tokenAddress]) {
-                    status.innerText = "Approving token...";
-                    const maxUint256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-                    const txApprove = await tokenContract.methods.approve(momongaAddress, maxUint256).send({
-                        from: account,
-                        gas: web3.utils.toHex(100000)
-                    });
-                    await waitForTransaction(txApprove.transactionHash);
-                    hasApprovedToken[tokenAddress] = true;
-                }
-
                 const tx = await momongaContract.methods.mint(tokenAddress).send({
                     from: account,
                     gas: web3.utils.toHex(500000)
@@ -336,11 +321,13 @@
             } finally {
                 mintButton.disabled = false;
                 mintButton.innerHTML = 'Mint MOMO';
+                updateMintButton();
             }
         }
 
         document.getElementById('connectWalletButton').addEventListener('click', initializeWeb3);
         document.getElementById('mintButton').addEventListener('click', mintMomo);
+        document.getElementById('tokenSelect').addEventListener('change', updateMintButton);
     </script>
 </body>
 </html>
