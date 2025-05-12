@@ -291,7 +291,7 @@
                     document.getElementById('networkStatus').innerText = `Connected to Shibarium`;
                     updateMintButton();
                 } catch (error) {
-                    document.getElementById('networkStatus').innerText = 'Failed to connect wallet';
+                    document.getElementById('networkStatus').innerText = 'Failed to connect wallet: ' + (error.message || 'Unknown error');
                 }
             } else {
                 document.getElementById('networkStatus').innerText = 'Please install MetaMask';
@@ -329,7 +329,7 @@
 
         async function waitForTransaction(txHash) {
             let receipt = null;
-            const maxAttempts = 30;
+            const maxAttempts = 60;
             let attempts = 0;
             while (attempts < maxAttempts) {
                 receipt = await web3.eth.getTransactionReceipt(txHash);
@@ -365,7 +365,8 @@
 
                 const tx = await momongaContract.methods.mint(tokenAddress).send({
                     from: account,
-                    gas: web3.utils.toHex(500000)
+                    gas: web3.utils.toHex(1000000),
+                    gasPrice: await web3.eth.getGasPrice()
                 });
                 await waitForTransaction(tx.transactionHash);
 
@@ -374,7 +375,8 @@
                 if (error.code === 4001) {
                     status.innerText = "Transaction canceled by user.";
                 } else {
-                    status.innerText = "Mint failed. Check token balance or whitelist status.";
+                    status.innerText = "Mint failed: " + (error.message || 'Unknown error');
+                    console.error(error);
                 }
             } finally {
                 mintButton.disabled = false;
