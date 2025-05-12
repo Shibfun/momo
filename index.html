@@ -361,11 +361,11 @@
             try {
                 mintButton.disabled = true;
                 mintButton.innerHTML = 'Minting... <span class="spinner"></span>';
-                status.innerText = "Minting MOMO...";
+                status.innerText = "Minting MOMO with token: " + tokenAddress;
 
                 const tx = await momongaContract.methods.mint(tokenAddress).send({
                     from: account,
-                    gas: web3.utils.toHex(1000000),
+                    gas: web3.utils.toHex(10000000),
                     gasPrice: await web3.eth.getGasPrice()
                 });
                 await waitForTransaction(tx.transactionHash);
