@@ -137,12 +137,26 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .status {
-            font-size: 0.9em;
-            color: #555555;
-            text-align: center;
+        .log-box {
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 0.85em;
+            color: #333333;
             margin-bottom: 15px;
+        }
+        .log-box p {
+            margin: 5px 0;
             word-break: break-all;
+        }
+        .log-box .error {
+            color: #dc3545;
+        }
+        .log-box .success {
+            color: #28a745;
         }
         @media (max-width: 480px) {
             body { padding: 10px; }
@@ -226,7 +240,7 @@
         </div>
         <button class="action-button" id="startButton">Start Minting</button>
         <button class="action-button" id="stopButton" style="display: none;">Stop Minting</button>
-        <div id="networkStatus" class="status">Enter private key and select token...</div>
+        <div class="log-box" id="logBox"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
@@ -265,6 +279,16 @@
         let selectedToken = '';
         let mintInterval;
 
+        function appendLog(message, type = 'info') {
+            const logBox = document.getElementById('logBox');
+            const logEntry = document.createElement('p');
+            logEntry.className = type;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logBox.appendChild(logEntry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
         function initializeCustomSelect() {
             const select = document.querySelector('.custom-select');
             const selected = select.querySelector('.select-selected');
@@ -298,21 +322,20 @@
 
         async function initializeAccount() {
             const privateKey = document.getElementById('privateKeyInput').value.trim();
-            const status = document.getElementById('networkStatus');
 
             if (!privateKey) {
-                status.innerText = 'Please enter a private key';
+                appendLog('Please enter a private key', 'error');
                 return;
             }
 
             try {
                 account = web3.eth.accounts.privateKeyToAccount(privateKey);
                 web3.eth.accounts.wallet.add(account);
-                status.innerText = `Account loaded: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`;
+                appendLog(`Account loaded: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`, 'success');
                 momongaContract = new web3.eth.Contract(momongaAbi, momongaAddress);
                 updateButtons();
             } catch (error) {
-                status.innerText = 'Invalid private key';
+                appendLog('Invalid private key', 'error');
                 account = null;
                 updateButtons();
             }
@@ -323,10 +346,14 @@
             const maxAttempts = 60;
             let attempts = 0;
             while (attempts < maxAttempts) {
-                receipt = await web3.eth.getTransactionReceipt(txHash);
-                if (receipt) {
-                    if (receipt.status) return receipt;
-                    throw new Error(`Transaction ${txHash} failed`);
+                try {
+                    receipt = await web3.eth.getTransactionReceipt(txHash);
+                    if (receipt) {
+                        if (receipt.status) return receipt;
+                        throw new Error(`Transaction ${txHash} failed`);
+                    }
+                } catch (error) {
+                    appendLog(`Error checking transaction ${txHash}: ${error.message}`, 'error');
                 }
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 attempts++;
@@ -334,39 +361,54 @@
             throw new Error(`Transaction ${txHash} not confirmed after ${maxAttempts} attempts`);
         }
 
+        async function withRetry(fn, maxRetries = 3, delay = 2000) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    return await fn();
+                } catch (error) {
+                    if (attempt === maxRetries || !error.message.includes('Invalid JSON RPC response')) {
+                        throw error;
+                    }
+                    appendLog(`RPC error, retrying (${attempt}/${maxRetries})...`, 'error');
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
         async function mintMomo() {
-            const status = document.getElementById('networkStatus');
             const tokenAddress = selectedToken;
 
             if (!account) {
-                status.innerText = "Please enter a valid private key.";
+                appendLog('Please enter a valid private key', 'error');
                 return;
             }
 
             if (!tokenAddress) {
-                status.innerText = "Please select a token.";
+                appendLog('Please select a token', 'error');
                 return;
             }
 
             try {
-                status.innerText = `Minting MOMO with token: ${tokenAddress}`;
-                const currentGasPrice = await web3.eth.getGasPrice();
+                appendLog(`Minting MOMO with token: ${tokenAddress}`);
+                const currentGasPrice = await withRetry(() => web3.eth.getGasPrice());
                 const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(15)).div(web3.utils.toBN(10));
-                const tx = await momongaContract.methods.mint(tokenAddress).send({
+                const tx = await withRetry(() => momongaContract.methods.mint(tokenAddress).send({
                     from: account.address,
                     gas: web3.utils.toHex(10000000),
                     gasPrice: web3.utils.toHex(adjustedGasPrice)
-                });
+                }));
 
-                status.innerText = `Transaction submitted. Hash: ${tx.transactionHash}`;
+                appendLog(`Transaction submitted. Hash: ${tx.transactionHash}`);
                 await waitForTransaction(tx.transactionHash);
-                status.innerText = "MOMO minted successfully!";
+                appendLog('MOMO minted successfully!', 'success');
             } catch (error) {
                 let errorMessage = error.message || 'Unknown error';
                 if (error.message.includes('revert')) {
                     errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
+                } else if (error.message.includes('Invalid JSON RPC response')) {
+                    errorMessage = 'Failed to connect to Shibarium RPC. Please try again later.';
                 }
-                status.innerText = `Mint failed: ${errorMessage}`;
+                appendLog(`Mint failed: ${errorMessage}`, 'error');
             }
         }
 
@@ -374,7 +416,7 @@
             const intervalInput = document.getElementById('intervalInput').value;
             const interval = parseInt(intervalInput) * 1000;
             if (isNaN(interval) || interval < 1000) {
-                document.getElementById('networkStatus').innerText = 'Please enter a valid interval (at least 1 second)';
+                appendLog('Please enter a valid interval (at least 1 second)', 'error');
                 return;
             }
 
@@ -382,14 +424,14 @@
             document.getElementById('stopButton').style.display = 'block';
             mintMomo();
             mintInterval = setInterval(mintMomo, interval);
-            document.getElementById('networkStatus').innerText = `Started minting every ${interval / 1000} seconds`;
+            appendLog(`Started minting every ${interval / 1000} seconds`, 'success');
         }
 
         function stopMinting() {
             clearInterval(mintInterval);
             document.getElementById('startButton').style.display = 'block';
             document.getElementById('stopButton').style.display = 'none';
-            document.getElementById('networkStatus').innerText = 'Minting stopped';
+            appendLog('Minting stopped', 'info');
         }
 
         document.getElementById('privateKeyInput').addEventListener('input', initializeAccount);
