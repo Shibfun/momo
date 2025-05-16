@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momonga Mint</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #ffffff;
+            color: #333333;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333333;
+        }
+        .input-box {
+            margin-bottom: 15px;
+        }
+        .input-box label {
+            display: block;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            color: #333333;
+        }
+        .input-box input, .input-box select {
+            padding: 10px;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            color: #333333;
+            font-size: 1em;
+            width: 100%;
+        }
+        .custom-select {
+            position: relative;
+            width: 100%;
+        }
+        .select-selected {
+            padding: 10px;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            color: #333333;
+            font-size: 1em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .select-selected img {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+        .select-items {
+            position: absolute;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 5px;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 99;
+            display: none;
+        }
+        .select-items div {
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .select-items div img {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+        .select-items div:hover {
+            background: #f0f0f0;
+        }
+        .select-items.show {
+            display: block;
+        }
+        .action-button {
+            padding: 12px;
+            background: #28a745;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.2s;
+            position: relative;
+        }
+        .action-button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .action-button:hover:not(:disabled) { background: #218838; }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-top: 2px solid #28a745;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 5px;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            font-size: 0.9em;
+            color: #555555;
+            text-align: center;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .header { font-size: 1.3em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">Momonga Mint</div>
+        <div class="input-box">
+            <label>Private Key</label>
+            <input type="text" id="privateKeyInput" placeholder="Enter your private key">
+        </div>
+        <div class="input-box">
+            <label>Interval (seconds)</label>
+            <input type="number" id="intervalInput" placeholder="Enter interval in seconds" value="60">
+        </div>
+        <div class="input-box">
+            <label>Select Whitelisted Token</label>
+            <div class="custom-select">
+                <div class="select-selected">
+                    <img src="" alt="" style="display: none;">
+                    Select a token
+                </div>
+                <div class="select-items">
+                    <div data-value="0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" data-logo="https://woofswap.finance/image/tokens/WOOF.png">
+                        <img src="https://woofswap.finance/image/tokens/WOOF.png" alt="WOOF"> WOOF
+                    </div>
+                    <div data-value="0xeCe898EdCc0AF91430603175F945D8de75291c70" data-logo="https://woofswap.finance/image/tokens/DAMN.png">
+                        <img src="https://woofswap.finance/image/tokens/DAMN.png" alt="DAMN"> DAMN
+                    </div>
+                    <div data-value="0x0b4FD6288b6d32171CC515bfFC9340026F56A358" data-logo="https://woofswap.finance/image/tokens/PIKA.png">
+                        <img src="https://woofswap.finance/image/tokens/PIKA.png" alt="PIKA"> PIKA
+                    </div>
+                    <div data-value="0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0" data-logo="https://woofswap.finance/image/tokens/feed.png">
+                        <img src="https://woofswap.finance/image/tokens/feed.png" alt="FEED"> FEED
+                    </div>
+                    <div data-value="0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7" data-logo="https://woofswap.finance/image/tokens/wow.png">
+                        <img src="https://woofswap.finance/image/tokens/wow.png" alt="WOW"> WOW
+                    </div>
+                    <div data-value="0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad" data-logo="https://woofswap.finance/image/tokens/shipa.png">
+                        <img src="https://woofswap.finance/image/tokens/shipa.png" alt="SHIPA"> SHIPA
+                    </div>
+                    <div data-value="0x0cCD687CC6F8461170336D8e8cf46A39313DEab9" data-logo="https://www.woofswap.finance/image/tokens/luisa.png">
+                        <img src="https://www.woofswap.finance/image/tokens/luisa.png" alt="LUISA"> LUISA
+                    </div>
+                    <div data-value="0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839" data-logo="https://woofswap.finance/image/tokens/ChikaLogo.png">
+                        <img src="https://woofswap.finance/image/tokens/ChikaLogo.png" alt="CHIKA"> CHIKA
+                    </div>
+                    <div data-value="0x64E19b6a167878d2483d166212A3c2c68b1eB842" data-logo="https://woofswap.finance/image/tokens/none.png">
+                        <img src="https://woofswap.finance/image/tokens/none.png" alt="NONE"> NONE
+                    </div>
+                    <div data-value="0x3a1adB8Ef2a37Fe127Aa62B2Fc0399a4A6AD9D79" data-logo="https://woofswap.finance/image/tokens/Usagi.png">
+                        <img src="https://woofswap.finance/image/tokens/Usagi.png" alt="USAGI"> USAGI
+                    </div>
+                    <div data-value="0x9F56Cba9C3d4CD9f3d7b899eA0Ff8292fE8264A8" data-logo="https://woofswap.finance/image/tokens/dudu.png">
+                        <img src="https://woofswap.finance/image/tokens/dudu.png" alt="DUDU"> DUDU
+                    </div>
+                    <div data-value="0xE3BdfeaF344cB0A3050B8a14425f9c8561313AfE" data-logo="https://woofswap.finance/image/tokens/ham.png">
+                        <img src="https://woofswap.finance/image/tokens/ham.png" alt="HAM"> HAM
+                    </div>
+                    <div data-value="0x00E661BDABaB03872018c893f548B9F2ab36f6AA" data-logo="https://woofswap.finance/image/tokens/shrug.png">
+                        <img src="https://woofswap.finance/image/tokens/shrug.png" alt="SHRUG"> SHRUG
+                    </div>
+                    <div data-value="0x5d63C604803BbF7919953b73c89309B5CBcc227a" data-logo="https://www.woofswap.finance/image/tokens/CANNED.png">
+                        <img src="https://www.woofswap.finance/image/tokens/CANNED.png" alt="CANNED"> CANNED
+                    </div>
+                    <div data-value="0xdE22A4F6C94507898442465d32a03871E4dc11Eb" data-logo="https://woofswap.finance/image/tokens/pnutshib.png">
+                        <img src="https://woofswap.finance/image/tokens/pnutshib.png" alt="PNUTSHIB"> PNUTSHIB
+                    </div>
+                    <div data-value="0x12C94d3A30daa09f81Ea6c037004E6e99A4A3dfc" data-logo="https://woofswap.finance/image/tokens/ric.png">
+                        <img src="https://woofswap.finance/image/tokens/ric.png" alt="RIC"> RIC
+                    </div>
+                    <div data-value="0x63A67329f761517570345eE86f791F74f9DC5461" data-logo="https://woofswap.finance/image/tokens/neko.png">
+                        <img src="https://woofswap.finance/image/tokens/neko.png" alt="NEKO"> NEKO
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="action-button" id="startButton">Start Minting</button>
+        <button class="action-button" id="stopButton" style="display: none;">Stop Minting</button>
+        <div id="networkStatus" class="status">Enter private key and select token...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script>
+        const momongaAddress = '0x23E2B4B5d33A2cF70f2d60C95E90AF7cC9Bf8Bf2';
+        const momongaAbi = [
+            {
+                "inputs": [{"internalType": "address", "name": "targetToken", "type": "address"}],
+                "name": "mint",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": true, "internalType": "address", "name": "token", "type": "address"},
+                    {"indexed": true, "internalType": "address", "name": "recipient", "type": "address"},
+                    {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}
+                ],
+                "name": "Airdrop",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": false, "internalType": "string", "name": "reason", "type": "string"}
+                ],
+                "name": "MintFailed",
+                "type": "event"
+            }
+        ];
+
+        const web3 = new Web3('https://rpc.shibariumchain.com');
+        let account, momongaContract;
+        let selectedToken = '';
+        let mintInterval;
+
+        function initializeCustomSelect() {
+            const select = document.querySelector('.custom-select');
+            const selected = select.querySelector('.select-selected');
+            const items = select.querySelector('.select-items');
+            const options = items.querySelectorAll('div');
+
+            selected.addEventListener('click', () => {
+                items.classList.toggle('show');
+            });
+
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    selected.innerHTML = option.innerHTML;
+                    selectedToken = option.getAttribute('data-value');
+                    items.classList.remove('show');
+                    updateButtons();
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!select.contains(e.target)) {
+                    items.classList.remove('show');
+                }
+            });
+        }
+
+        function updateButtons() {
+            const startButton = document.getElementById('startButton');
+            startButton.disabled = !selectedToken || !account;
+        }
+
+        async function initializeAccount() {
+            const privateKey = document.getElementById('privateKeyInput').value.trim();
+            const status = document.getElementById('networkStatus');
+
+            if (!privateKey) {
+                status.innerText = 'Please enter a private key';
+                return;
+            }
+
+            try {
+                account = web3.eth.accounts.privateKeyToAccount(privateKey);
+                web3.eth.accounts.wallet.add(account);
+                status.innerText = `Account loaded: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`;
+                momongaContract = new web3.eth.Contract(momongaAbi, momongaAddress);
+                updateButtons();
+            } catch (error) {
+                status.innerText = 'Invalid private key';
+                account = null;
+                updateButtons();
+            }
+        }
+
+        async function waitForTransaction(txHash) {
+            let receipt = null;
+            const maxAttempts = 60;
+            let attempts = 0;
+            while (attempts < maxAttempts) {
+                receipt = await web3.eth.getTransactionReceipt(txHash);
+                if (receipt) {
+                    if (receipt.status) return receipt;
+                    throw new Error(`Transaction ${txHash} failed`);
+                }
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                attempts++;
+            }
+            throw new Error(`Transaction ${txHash} not confirmed after ${maxAttempts} attempts`);
+        }
+
+        async function mintMomo() {
+            const status = document.getElementById('networkStatus');
+            const tokenAddress = selectedToken;
+
+            if (!account) {
+                status.innerText = "Please enter a valid private key.";
+                return;
+            }
+
+            if (!tokenAddress) {
+                status.innerText = "Please select a token.";
+                return;
+            }
+
+            try {
+                status.innerText = `Minting MOMO with token: ${tokenAddress}`;
+                const currentGasPrice = await web3.eth.getGasPrice();
+                const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(15)).div(web3.utils.toBN(10));
+                const tx = await momongaContract.methods.mint(tokenAddress).send({
+                    from: account.address,
+                    gas: web3.utils.toHex(10000000),
+                    gasPrice: web3.utils.toHex(adjustedGasPrice)
+                });
+
+                status.innerText = `Transaction submitted. Hash: ${tx.transactionHash}`;
+                await waitForTransaction(tx.transactionHash);
+                status.innerText = "MOMO minted successfully!";
+            } catch (error) {
+                let errorMessage = error.message || 'Unknown error';
+                if (error.message.includes('revert')) {
+                    errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
+                }
+                status.innerText = `Mint failed: ${errorMessage}`;
+            }
+        }
+
+        function startMinting() {
+            const intervalInput = document.getElementById('intervalInput').value;
+            const interval = parseInt(intervalInput) * 1000;
+            if (isNaN(interval) || interval < 1000) {
+                document.getElementById('networkStatus').innerText = 'Please enter a valid interval (at least 1 second)';
+                return;
+            }
+
+            document.getElementById('startButton').style.display = 'none';
+            document.getElementById('stopButton').style.display = 'block';
+            mintMomo();
+            mintInterval = setInterval(mintMomo, interval);
+            document.getElementById('networkStatus').innerText = `Started minting every ${interval / 1000} seconds`;
+        }
+
+        function stopMinting() {
+            clearInterval(mintInterval);
+            document.getElementById('startButton').style.display = 'block';
+            document.getElementById('stopButton').style.display = 'none';
+            document.getElementById('networkStatus').innerText = 'Minting stopped';
+        }
+
+        document.getElementById('privateKeyInput').addEventListener('input', initializeAccount);
+        document.getElementById('startButton').addEventListener('click', startMinting);
+        document.getElementById('stopButton').addEventListener('click', stopMinting);
+        initializeCustomSelect();
+    </script>
+</body>
+</html>
