@@ -118,7 +118,9 @@
             background: #cccccc;
             cursor: not-allowed;
         }
-        .action-button:hover:not(:disabled) { background: #218838; }
+        .action-button:hover:not(:disabled) {
+            background: #218838;
+        }
         .spinner {
             display: inline-block;
             width: 16px;
@@ -170,7 +172,7 @@
         <div class="header">Momonga Mint</div>
         <div class="input-box">
             <label>Private Key</label>
-            <input type="text" id="privateKeyInput" placeholder="Enter your private key">
+            <input type="password" id="privateKeyInput" placeholder="Enter your private key">
         </div>
         <div class="input-box">
             <label>Interval (seconds)</label>
@@ -274,10 +276,17 @@
             }
         ];
 
-        const web3 = new Web3('https://rpc.shibariumchain.com');
+        const rpcEndpoints = [
+            'https://rpc.shibariumchain.com',
+            'https://shibarium-rpc.com', // Add more reliable Shibarium RPCs if available
+            'https://rpc.shibrpc.com'
+        ];
+        let currentRpcIndex = 0;
+        let web3 = new Web3(rpcEndpoints[currentRpcIndex]);
         let account, momongaContract;
         let selectedToken = '';
         let mintInterval;
+        let nonce = null;
 
         function appendLog(message, type = 'info') {
             const logBox = document.getElementById('logBox');
@@ -287,6 +296,15 @@
             logEntry.textContent = `[${timestamp}] ${message}`;
             logBox.appendChild(logEntry);
             logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function switchRpc() {
+            currentRpcIndex = (currentRpcIndex + 1) % rpcEndpoints.length;
+            web3 = new Web3(rpcEndpoints[currentRpcIndex]);
+            appendLog(`Switched to RPC: ${rpcEndpoints[currentRpcIndex]}`, 'info');
+            if (account) {
+                momongaContract = new web3.eth.Contract(momongaAbi, momongaAddress);
+            }
         }
 
         function initializeCustomSelect() {
@@ -333,9 +351,10 @@
                 web3.eth.accounts.wallet.add(account);
                 appendLog(`Account loaded: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`, 'success');
                 momongaContract = new web3.eth.Contract(momongaAbi, momongaAddress);
+                nonce = await web3.eth.getTransactionCount(account.address, 'pending');
                 updateButtons();
             } catch (error) {
-                appendLog('Invalid private key', 'error');
+                appendLog(`Failed to load account: ${error.message}`, 'error');
                 account = null;
                 updateButtons();
             }
@@ -366,10 +385,12 @@
                 try {
                     return await fn();
                 } catch (error) {
-                    if (attempt === maxRetries || !error.message.includes('Invalid JSON RPC response')) {
+                    if (attempt === maxRetries) {
+                        appendLog(`RPC error after ${maxRetries} retries: ${error.message}`, 'error');
+                        switchRpc();
                         throw error;
                     }
-                    appendLog(`RPC error, retrying (${attempt}/${maxRetries})...`, 'error');
+                    appendLog(`RPC error, retrying (${attempt}/${maxRetries}): ${error.message}`, 'error');
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
@@ -392,21 +413,34 @@
                 appendLog(`Minting MOMO with token: ${tokenAddress}`);
                 const currentGasPrice = await withRetry(() => web3.eth.getGasPrice());
                 const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(15)).div(web3.utils.toBN(10));
-                const tx = await withRetry(() => momongaContract.methods.mint(tokenAddress).send({
+                const gasLimit = web3.utils.toHex(10000000);
+                
+                const txObject = {
                     from: account.address,
-                    gas: web3.utils.toHex(10000000),
-                    gasPrice: web3.utils.toHex(adjustedGasPrice)
-                }));
+                    to: momongaAddress,
+                    gas: gasLimit,
+                    gasPrice: web3.utils.toHex(adjustedGasPrice),
+                    nonce: web3.utils.toHex(nonce),
+                    data: momongaContract.methods.mint(tokenAddress).encodeABI()
+                };
+
+                const signedTx = await web3.eth.accounts.signTransaction(txObject, account.privateKey);
+                const tx = await withRetry(() => web3.eth.sendSignedTransaction(signedTx.rawTransaction));
 
                 appendLog(`Transaction submitted. Hash: ${tx.transactionHash}`);
                 await waitForTransaction(tx.transactionHash);
                 appendLog('MOMO minted successfully!', 'success');
+                nonce++; // Increment nonce after successful transaction
             } catch (error) {
                 let errorMessage = error.message || 'Unknown error';
                 if (error.message.includes('revert')) {
                     errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
                 } else if (error.message.includes('Invalid JSON RPC response')) {
-                    errorMessage = 'Failed to connect to Shibarium RPC. Please try again later.';
+                    errorMessage = 'Failed to connect to Shibarium RPC. Switched to another endpoint.';
+                } else if (error.message.includes('nonce too low')) {
+                    appendLog('Nonce too low, resetting nonce...', 'info');
+                    nonce = await web3.eth.getTransactionCount(account.address, 'pending');
+                    return; // Retry with new nonce
                 }
                 appendLog(`Mint failed: ${errorMessage}`, 'error');
             }
