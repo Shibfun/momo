@@ -176,7 +176,11 @@
         </div>
         <div class="input-box">
             <label>Interval (seconds)</label>
-            <input type="number" id="intervalInput" placeholder="Enter interval in seconds" value="60">
+            <input type="number" id="intervalInput" placeholder="Enter interval in seconds" value="60" min="1">
+        </div>
+        <div class="input-box">
+            <label>Gas Limit</label>
+            <input type="number" id="gasLimit" value="300000" min="21000">
         </div>
         <div class="input-box">
             <label>Select Whitelisted Token</label>
@@ -245,7 +249,7 @@
         <div class="log-box" id="logBox"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script>
         const momongaAddress = '0x23E2B4B5d33A2cF70f2d60C95E90AF7cC9Bf8Bf2';
         const momongaAbi = [
@@ -276,15 +280,14 @@
             }
         ];
 
-        const rpcEndpoints = [
-            'https://www.shibrpc.com',
-        ];
-        let currentRpcIndex = 0;
-        let web3 = new Web3(rpcEndpoints[currentRpcIndex]);
+        const RPC_ENDPOINT = 'https://www.shibrpc.com';
+        const GAS_PRICE_MIN_GWEI = '1';
+        const GAS_PRICE_MAX_GWEI = '5';
+        let web3 = new Web3(RPC_ENDPOINT);
         let account, momongaContract;
         let selectedToken = '';
         let mintInterval;
-        let nonce = null;
+        let isMinting = false;
 
         function appendLog(message, type = 'info') {
             const logBox = document.getElementById('logBox');
@@ -294,15 +297,6 @@
             logEntry.textContent = `[${timestamp}] ${message}`;
             logBox.appendChild(logEntry);
             logBox.scrollTop = logBox.scrollHeight;
-        }
-
-        function switchRpc() {
-            currentRpcIndex = (currentRpcIndex + 1) % rpcEndpoints.length;
-            web3 = new Web3(rpcEndpoints[currentRpcIndex]);
-            appendLog(`Switched to RPC: ${rpcEndpoints[currentRpcIndex]}`, 'info');
-            if (account) {
-                momongaContract = new web3.eth.Contract(momongaAbi, momongaAddress);
-            }
         }
 
         function initializeCustomSelect() {
@@ -333,7 +327,8 @@
 
         function updateButtons() {
             const startButton = document.getElementById('startButton');
-            startButton.disabled = !selectedToken || !account;
+            startButton.disabled = !selectedToken || !account || isMinting;
+            document.getElementById('stopButton').style.display = isMinting ? 'block' : 'none';
         }
 
         async function initializeAccount() {
@@ -349,7 +344,6 @@
                 web3.eth.accounts.wallet.add(account);
                 appendLog(`Account loaded: ${account.address.slice(0, 6)}...${account.address.slice(-4)}`, 'success');
                 momongaContract = new web3.eth.Contract(momongaAbi, momongaAddress);
-                nonce = await web3.eth.getTransactionCount(account.address, 'pending');
                 updateButtons();
             } catch (error) {
                 appendLog(`Failed to load account: ${error.message}`, 'error');
@@ -358,13 +352,42 @@
             }
         }
 
+        async function getNextNonce(address) {
+            try {
+                const pendingNonce = await web3.eth.getTransactionCount(address, 'pending');
+                const latestNonce = await web3.eth.getTransactionCount(address, 'latest');
+                const nextNonce = Math.max(pendingNonce, latestNonce);
+                appendLog(`Fetched nonce for ${address.slice(0, 8)}...: ${nextNonce}`, 'info');
+                return nextNonce;
+            } catch (error) {
+                appendLog(`Error fetching nonce: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function updateGasPrice() {
+            try {
+                const gasPrice = await web3.eth.getGasPrice();
+                let fastGasPrice = web3.utils.toBN(gasPrice);
+                fastGasPrice = web3.utils.toBN(Math.max(
+                    web3.utils.toWei(GAS_PRICE_MIN_GWEI, 'gwei'),
+                    Math.min(fastGasPrice, web3.utils.toWei(GAS_PRICE_MAX_GWEI, 'gwei'))
+                ));
+                appendLog(`Updated gasPrice: ${web3.utils.fromWei(fastGasPrice, 'gwei')} Gwei`, 'info');
+                return fastGasPrice;
+            } catch (error) {
+                const fallback = web3.utils.toWei('2', 'gwei');
+                appendLog(`Failed to update gasPrice, using fallback: 2 Gwei`, 'error');
+                return fallback;
+            }
+        }
+
         async function waitForTransaction(txHash) {
-            let receipt = null;
             const maxAttempts = 60;
             let attempts = 0;
             while (attempts < maxAttempts) {
                 try {
-                    receipt = await web3.eth.getTransactionReceipt(txHash);
+                    const receipt = await web3.eth.getTransactionReceipt(txHash);
                     if (receipt) {
                         if (receipt.status) return receipt;
                         throw new Error(`Transaction ${txHash} failed`);
@@ -383,62 +406,66 @@
                 try {
                     return await fn();
                 } catch (error) {
-                    if (attempt === maxRetries) {
-                        appendLog(`RPC error after ${maxRetries} retries: ${error.message}`, 'error');
-                        switchRpc();
+                    if (attempt === maxRetries || !error.message.includes('nonce too low')) {
+                        appendLog(`Error after ${maxRetries} retries: ${error.message}`, 'error');
                         throw error;
                     }
-                    appendLog(`RPC error, retrying (${attempt}/${maxRetries}): ${error.message}`, 'error');
+                    appendLog(`Retrying (${attempt}/${maxRetries}) due to: ${error.message}`, 'error');
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
 
         async function mintMomo() {
-            const tokenAddress = selectedToken;
+            if (!isMinting) return;
 
+            const tokenAddress = selectedToken;
             if (!account) {
                 appendLog('Please enter a valid private key', 'error');
                 return;
             }
-
             if (!tokenAddress) {
                 appendLog('Please select a token', 'error');
                 return;
             }
 
             try {
-                appendLog(`Minting MOMO with token: ${tokenAddress}`);
-                const currentGasPrice = await withRetry(() => web3.eth.getGasPrice());
-                const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(15)).div(web3.utils.toBN(10));
-                const gasLimit = web3.utils.toHex(10000000);
-                
-                const txObject = {
+                const balance = await web3.eth.getBalance(account.address);
+                if (web3.utils.fromWei(balance, 'ether') < 0.01) {
+                    appendLog(`Low BONE balance (< 0.01) for ${account.address.slice(0, 8)}`, 'error');
+                    return;
+                }
+
+                const nonce = await getNextNonce(account.address);
+                if (nonce === null) {
+                    appendLog('Failed to fetch nonce, aborting mint', 'error');
+                    return;
+                }
+
+                const gasPrice = await updateGasPrice();
+                const gasLimit = parseInt(document.getElementById('gasLimit').value);
+
+                appendLog(`Minting MOMO with token ${tokenAddress} for ${account.address.slice(0, 8)}, nonce: ${nonce}, gasPrice: ${web3.utils.fromWei(gasPrice, 'gwei')} Gwei`, 'info');
+
+                const tx = await withRetry(() => momongaContract.methods.mint(tokenAddress).send({
                     from: account.address,
-                    to: momongaAddress,
                     gas: gasLimit,
-                    gasPrice: web3.utils.toHex(adjustedGasPrice),
-                    nonce: web3.utils.toHex(nonce),
-                    data: momongaContract.methods.mint(tokenAddress).encodeABI()
-                };
+                    gasPrice: gasPrice,
+                    nonce: nonce
+                }));
 
-                const signedTx = await web3.eth.accounts.signTransaction(txObject, account.privateKey);
-                const tx = await withRetry(() => web3.eth.sendSignedTransaction(signedTx.rawTransaction));
-
-                appendLog(`Transaction submitted. Hash: ${tx.transactionHash}`);
+                appendLog(`Transaction submitted. Hash: ${tx.transactionHash}`, 'info');
                 await waitForTransaction(tx.transactionHash);
                 appendLog('MOMO minted successfully!', 'success');
-                nonce++; // Increment nonce after successful transaction
             } catch (error) {
                 let errorMessage = error.message || 'Unknown error';
                 if (error.message.includes('revert')) {
                     errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
-                } else if (error.message.includes('Invalid JSON RPC response')) {
-                    errorMessage = 'Failed to connect to Shibarium RPC. Switched to another endpoint.';
                 } else if (error.message.includes('nonce too low')) {
-                    appendLog('Nonce too low, resetting nonce...', 'info');
-                    nonce = await web3.eth.getTransactionCount(account.address, 'pending');
-                    return; // Retry with new nonce
+                    appendLog('Nonce too low detected, resetting nonce for next attempt', 'info');
+                    return; // Allow next interval to retry with fresh nonce
+                } else if (error.message.includes('Invalid JSON RPC response')) {
+                    errorMessage = 'Failed to connect to Shibarium RPC. Please check network.';
                 }
                 appendLog(`Mint failed: ${errorMessage}`, 'error');
             }
@@ -452,6 +479,12 @@
                 return;
             }
 
+            if (!account || !selectedToken) {
+                appendLog('Please provide a private key and select a token', 'error');
+                return;
+            }
+
+            isMinting = true;
             document.getElementById('startButton').style.display = 'none';
             document.getElementById('stopButton').style.display = 'block';
             mintMomo();
@@ -460,6 +493,7 @@
         }
 
         function stopMinting() {
+            isMinting = false;
             clearInterval(mintInterval);
             document.getElementById('startButton').style.display = 'block';
             document.getElementById('stopButton').style.display = 'none';
