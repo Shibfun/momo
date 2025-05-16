@@ -175,10 +175,6 @@
             <input type="password" id="privateKeyInput" placeholder="Enter your private key">
         </div>
         <div class="input-box">
-            <label>Interval (seconds)</label>
-            <input type="number" id="intervalInput" placeholder="Enter interval in seconds" value="60" min="1">
-        </div>
-        <div class="input-box">
             <label>Gas Limit</label>
             <input type="number" id="gasLimit" value="10000000" min="21000">
         </div>
@@ -249,7 +245,7 @@
         <div class="log-box" id="logBox"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script>
         const momongaAddress = '0x23E2B4B5d33A2cF70f2d60C95E90AF7cC9Bf8Bf2';
         const momongaAbi = [
@@ -286,7 +282,6 @@
         let web3 = new Web3(RPC_ENDPOINT);
         let account, momongaContract;
         let selectedToken = '';
-        let mintInterval;
         let isMinting = false;
 
         function appendLog(message, type = 'info') {
@@ -407,7 +402,7 @@
                 } catch (error) {
                     if (error.message.includes('nonce too low')) {
                         // Silently retry with a fresh nonce
-                        return null; // Trigger nonce reset in mintMomo
+                        return null;
                     }
                     if (attempt === maxRetries) {
                         appendLog(`Error after ${maxRetries} retries: ${error.message}`, 'error');
@@ -420,29 +415,29 @@
         }
 
         async function mintMomo() {
-            if (!isMinting) return;
+            if (!isMinting) return false;
 
             const tokenAddress = selectedToken;
             if (!account) {
                 appendLog('Please enter a valid private key', 'error');
-                return;
+                return false;
             }
             if (!tokenAddress) {
                 appendLog('Please select a token', 'error');
-                return;
+                return false;
             }
 
             try {
                 const balance = await web3.eth.getBalance(account.address);
                 if (web3.utils.fromWei(balance, 'ether') < 0.01) {
                     appendLog(`Low BONE balance (< 0.01) for ${account.address.slice(0, 8)}`, 'error');
-                    return;
+                    return false;
                 }
 
                 const nonce = await getNextNonce(account.address);
                 if (nonce === null) {
                     appendLog('Failed to fetch nonce, aborting mint', 'error');
-                    return;
+                    return false;
                 }
 
                 const gasPrice = await updateGasPrice();
@@ -463,13 +458,14 @@
                 const tx = await withRetry(() => web3.eth.sendSignedTransaction(signedTx.rawTransaction));
 
                 if (tx === null) {
-                    // Nonce too low, silently retry with fresh nonce in next interval
-                    return;
+                    // Nonce too low, silently retry with fresh nonce in next call
+                    return false;
                 }
 
                 appendLog(`Transaction submitted. Hash: ${tx.transactionHash}`, 'info');
                 await waitForTransaction(tx.transactionHash);
                 appendLog('MOMO minted successfully!', 'success');
+                return true;
             } catch (error) {
                 let errorMessage = error.message || 'Unknown error';
                 if (error.message.includes('revert')) {
@@ -478,17 +474,11 @@
                     errorMessage = 'Failed to connect to Shibarium RPC. Please check network.';
                 }
                 appendLog(`Mint failed: ${errorMessage}`, 'error');
+                return false;
             }
         }
 
-        function startMinting() {
-            const intervalInput = document.getElementById('intervalInput').value;
-            const interval = parseInt(intervalInput) * 1000;
-            if (isNaN(interval) || interval < 1000) {
-                appendLog('Please enter a valid interval (at least 1 second)', 'error');
-                return;
-            }
-
+        async function startMinting() {
             if (!account || !selectedToken) {
                 appendLog('Please provide a private key and select a token', 'error');
                 return;
@@ -497,14 +487,20 @@
             isMinting = true;
             document.getElementById('startButton').style.display = 'none';
             document.getElementById('stopButton').style.display = 'block';
-            mintMomo();
-            mintInterval = setInterval(mintMomo, interval);
-            appendLog(`Started minting every ${interval / 1000} seconds`, 'success');
+            appendLog('Started minting process', 'success');
+
+            while (isMinting) {
+                const success = await mintMomo();
+                if (!success) {
+                    // Failed (e.g., nonce too low, balance, revert), try again immediately
+                    continue;
+                }
+                // Success, proceed to next mint
+            }
         }
 
         function stopMinting() {
             isMinting = false;
-            clearInterval(mintInterval);
             document.getElementById('startButton').style.display = 'block';
             document.getElementById('stopButton').style.display = 'none';
             appendLog('Minting stopped', 'info');
