@@ -180,7 +180,7 @@
         </div>
         <div class="input-box">
             <label>Gas Limit</label>
-            <input type="number" id="gasLimit" value="10000000" min="21000">
+            <input type="number" id="gasLimit" value="300000" min="21000">
         </div>
         <div class="input-box">
             <label>Select Whitelisted Token</label>
@@ -249,7 +249,7 @@
         <div class="log-box" id="logBox"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
     <script>
         const momongaAddress = '0x23E2B4B5d33A2cF70f2d60C95E90AF7cC9Bf8Bf2';
         const momongaAbi = [
@@ -443,16 +443,21 @@
                 }
 
                 const gasPrice = await updateGasPrice();
-                const gasLimit = parseInt(document.getElementById('gasLimit').value);
+                const gasLimit = web3.utils.toHex(10000000);
 
                 appendLog(`Minting MOMO with token ${tokenAddress} for ${account.address.slice(0, 8)}, nonce: ${nonce}, gasPrice: ${web3.utils.fromWei(gasPrice, 'gwei')} Gwei`, 'info');
 
-                const tx = await withRetry(() => momongaContract.methods.mint(tokenAddress).send({
+                const txObject = {
                     from: account.address,
+                    to: mom\u0020momongaAddress,
                     gas: gasLimit,
-                    gasPrice: gasPrice,
-                    nonce: nonce
-                }));
+                    gasPrice: web3.utils.toHex(gasPrice),
+                    nonce: web3.utils.toHex(nonce),
+                    data: momongaContract.methods.mint(tokenAddress).encodeABI()
+                };
+
+                const signedTx = await web3.eth.accounts.signTransaction(txObject, account.privateKey);
+                const tx = await withRetry(() => web3.eth.sendSignedTransaction(signedTx.rawTransaction));
 
                 appendLog(`Transaction submitted. Hash: ${tx.transactionHash}`, 'info');
                 await waitForTransaction(tx.transactionHash);
@@ -461,11 +466,11 @@
                 let errorMessage = error.message || 'Unknown error';
                 if (error.message.includes('revert')) {
                     errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
+                } else if (error.message.includes('Invalid JSON RPC response')) {
+                    errorMessage = 'Failed to connect to Shibarium RPC. Please check network.';
                 } else if (error.message.includes('nonce too low')) {
                     appendLog('Nonce too low detected, resetting nonce for next attempt', 'info');
                     return; // Allow next interval to retry with fresh nonce
-                } else if (error.message.includes('Invalid JSON RPC response')) {
-                    errorMessage = 'Failed to connect to Shibarium RPC. Please check network.';
                 }
                 appendLog(`Mint failed: ${errorMessage}`, 'error');
             }
