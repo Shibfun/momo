@@ -195,15 +195,19 @@
         let web3, account, shibaVoteContract;
         let tokenHolders = {};
 
-        async function fetchHolders(tokenAddress) {
-            try {
-                const response = await fetch(`https://www.shibariumscan.io/api/v2/addresses/${tokenAddress}`);
-                const data = await response.json();
-                return data.holders_count || 0;
-            } catch (error) {
-                console.error(`Failed to fetch holders for ${tokenAddress}:`, error);
-                return 0;
+        async function fetchHolders(tokenAddress, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(`https://www.shibariumscan.io/api/v2/addresses/${tokenAddress}`);
+                    const data = await response.json();
+                    return data.holders_count !== undefined ? data.holders_count : 0;
+                } catch (error) {
+                    console.error(`Failed to fetch holders for ${tokenAddress}, attempt ${i + 1}:`, error);
+                    if (i === retries - 1) return 0;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
+            return 0;
         }
 
         async function fetchAllHolders() {
