@@ -69,7 +69,6 @@
             align-items: center;
             padding: 10px;
             border-bottom: 1px solid #eee;
-            cursor: pointer;
         }
         .ranking-item:last-child {
             border-bottom: none;
@@ -83,27 +82,21 @@
             font-size: 0.9em;
             color: #333;
         }
-        .ranking-item:hover {
-            background: #ffebee;
-        }
-        .action-button {
-            padding: 12px;
+        .vote-button {
+            padding: 8px 12px;
             background: #ffdb58;
             color: #333;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            width: 100%;
             transition: background 0.3s;
-            position: relative;
-            margin-top: 15px;
         }
-        .action-button:disabled {
+        .vote-button:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
-        .action-button:hover:not(:disabled) { background: #ffd54f; }
+        .vote-button:hover:not(:disabled) { background: #ffd54f; }
         .spinner {
             display: inline-block;
             width: 16px;
@@ -113,10 +106,7 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-left: 5px;
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+            vertical-align: middle;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -126,6 +116,7 @@
             body { padding: 10px; }
             .container { padding: 15px; }
             .header { font-size: 1.5em; }
+            .vote-button { padding: 6px 10px; font-size: 0.8em; }
         }
     </style>
 </head>
@@ -137,7 +128,6 @@
             <div id="networkStatus" class="status">Click to connect...</div>
         </div>
         <div class="ranking-list" id="rankingList"></div>
-        <button class="action-button" id="voteButton" disabled>Cast Vote</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
@@ -203,7 +193,6 @@
         ];
 
         let web3, account, shibaVoteContract;
-        let selectedToken = '';
         let tokenHolders = {};
 
         async function fetchHolders(tokenAddress) {
@@ -236,27 +225,22 @@
             sortedTokens.forEach(token => {
                 const div = document.createElement('div');
                 div.className = 'ranking-item';
-                div.setAttribute('data-value', token.address);
                 div.innerHTML = `
                     <div style="display: flex; align-items: center;">
                         <img src="${token.logo}" alt="${token.name}">
                         <span>${token.name}</span>
                     </div>
-                    <span>${tokenHolders[token.address] || 0} Holders</span>
+                    <div style="display: flex; align-items: center;">
+                        <span>${tokenHolders[token.address] || 0} Holders</span>
+                        <button class="vote-button" data-value="${token.address}" ${!account ? 'disabled' : ''}>Vote</button>
+                    </div>
                 `;
-                div.addEventListener('click', () => {
-                    selectedToken = token.address;
-                    document.querySelectorAll('.ranking-item').forEach(item => item.style.background = '');
-                    div.style.background = '#ffebee';
-                    updateVoteButton();
-                });
                 rankingList.appendChild(div);
             });
-        }
 
-        function updateVoteButton() {
-            const voteButton = document.getElementById('voteButton');
-            voteButton.disabled = !selectedToken || !account;
+            document.querySelectorAll('.vote-button').forEach(button => {
+                button.addEventListener('click', () => castVote(button.getAttribute('data-value'), button));
+            });
         }
 
         async function initializeWeb3() {
@@ -269,13 +253,19 @@
                     await switchNetwork('Shibarium');
                     await initializeContracts();
                     document.getElementById('networkStatus').innerText = `Connected to Shibarium`;
-                    updateVoteButton();
+                    updateVoteButtons();
                 } catch (error) {
                     document.getElementById('networkStatus').innerText = 'Failed to connect wallet: ' + (error.message || 'Unknown error');
                 }
             } else {
                 document.getElementById('networkStatus').innerText = 'Please install MetaMask';
             }
+        }
+
+        function updateVoteButtons() {
+            document.querySelectorAll('.vote-button').forEach(button => {
+                button.disabled = !account;
+            });
         }
 
         async function switchNetwork(chain) {
@@ -323,24 +313,17 @@
             throw new Error(`Transaction ${txHash} not confirmed after ${maxAttempts} attempts`);
         }
 
-        async function castVote() {
+        async function castVote(tokenAddress, button) {
             const status = document.getElementById('networkStatus');
-            const voteButton = document.getElementById('voteButton');
-            const tokenAddress = selectedToken;
 
             if (!web3 || !account) {
                 status.innerText = "Please connect wallet first.";
                 return;
             }
 
-            if (!tokenAddress) {
-                status.innerText = "Please select a token.";
-                return;
-            }
-
             try {
-                voteButton.disabled = true;
-                voteButton.innerHTML = 'Voting... <span class="spinner"></span>';
+                button.disabled = true;
+                button.innerHTML = 'Voting... <span class="spinner"></span>';
                 status.innerText = `Voting for token: ${tokenAddress}`;
 
                 const currentGasPrice = await web3.eth.getGasPrice();
@@ -368,14 +351,12 @@
                     console.error(error);
                 }
             } finally {
-                voteButton.disabled = false;
-                voteButton.innerHTML = 'Cast Vote';
-                updateVoteButton();
+                button.disabled = !account;
+                button.innerHTML = 'Vote';
             }
         }
 
         document.getElementById('connectWalletButton').addEventListener('click', initializeWeb3);
-        document.getElementById('voteButton').addEventListener('click', castVote);
         fetchAllHolders();
     </script>
 </body>
