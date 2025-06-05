@@ -19,6 +19,7 @@
             padding: 20px;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
         }
@@ -113,17 +114,23 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        @media (max-width: 480px) {
-            body { padding: 10px; }
-            .container { padding: 15px; }
-            .header { font-size: 1.5em; }
-            .vote-button { padding: 6px 10px; font-size: 0.8em; }
-        }
         .loading-text {
             text-align: center;
             font-size: 0.9em;
             color: #555;
             margin-top: 10px;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #666;
+            text-align: center;
+        }
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .header { font-size: 1.5em; }
+            .vote-button { padding: 6px 10px; font-size: 0.8em; }
         }
     </style>
 </head>
@@ -137,6 +144,7 @@
         <div class="loading-text" id="loadingText">Loading holders...</div>
         <div class="ranking-list" id="rankingList"></div>
     </div>
+    <footer>Powered by Woofswap</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
     <script>
@@ -266,7 +274,8 @@
                     document.getElementById('networkStatus').innerText = `Connected to Shibarium`;
                     displayRanking();
                 } catch (error) {
-                    document.getElementById('networkStatus').innerText = 'Failed to connect wallet';
+                    console.error('Web3 initialization failed:', error);
+                    document.getElementById('networkStatus').innerText = error.code === 4001 ? 'Operation canceled by user.' : 'Operation failed, please try again.';
                 }
             } else {
                 document.getElementById('networkStatus').innerText = 'Please install MetaMask';
@@ -303,17 +312,17 @@
                 const receipt = await web3.eth.getTransactionReceipt(txHash);
                 if (receipt) {
                     if (receipt.status) return receipt;
-                    throw new Error(`Transaction ${txHash} failed`);
+                    throw new Error('Transaction failed');
                 }
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
-            throw new Error(`Transaction ${txHash} not confirmed`);
+            throw new Error('Transaction not confirmed');
         }
 
         async function castVote(tokenAddress, button) {
             const status = document.getElementById('networkStatus');
             if (!web3 || !account) {
-                status.innerText = "Please connect wallet first.";
+                status.innerText = 'Please connect wallet first.';
                 return;
             }
             try {
@@ -329,18 +338,11 @@
                 });
                 status.innerText = `Vote submitted. Hash: ${tx.transactionHash}`;
                 await waitForTransaction(tx.transactionHash);
-                status.innerText = "Vote cast successfully!";
+                status.innerText = 'Vote cast successfully!';
                 await fetchAllHolders();
             } catch (error) {
-                let errorMessage = error.message || 'Unknown error';
-                if (error.message.includes('revert')) {
-                    errorMessage = error.message.split('revert')[1]?.trim() || 'Revert reason unknown';
-                }
-                if (error.code === 4001) {
-                    status.innerText = "Vote canceled by user.";
-                } else {
-                    status.innerText = `Vote failed: ${errorMessage}`;
-                }
+                console.error('Vote failed:', error);
+                status.innerText = error.code === 4001 ? 'Operation canceled by user.' : 'Operation failed, please try again.';
             } finally {
                 button.disabled = !account;
                 button.innerHTML = 'Vote';
