@@ -392,7 +392,7 @@
                 status.innerText = `Minting MOMO with token: ${tokenAddress}`;
 
                 const currentGasPrice = await web3.eth.getGasPrice();
-                const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(15)).div(web3.utils.toBN(10));
+                const adjustedGasPrice = web3.utils.toBN(currentGasPrice).mul(web3.utils.toBN(11)).div(web3.utils.toBN(10));
                 const tx = await momongaContract.methods.mint(tokenAddress).send({
                     from: account,
                     gas: web3.utils.toHex(10000000),
